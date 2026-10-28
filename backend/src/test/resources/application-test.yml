@@ -1,0 +1,10 @@
+app:
+  import:
+    on-startup: false
+  prediction:
+    run-on-startup: false
+    cron: "-"
+  ml:
+    url: http://localhost:1
+    max-attempts: 1
+    retry-delay: 10ms

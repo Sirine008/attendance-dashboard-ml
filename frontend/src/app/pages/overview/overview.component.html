@@ -1,0 +1,37 @@
+<div class="page">
+  <header class="page-header">
+    <div>
+      <h1>Vue d'ensemble</h1>
+      <p class="period">{{ f.periodLabel() }}@if (comparison()) { · <span class="faint">{{ comparison() }}</span> }</p>
+    </div>
+  </header>
+
+  <app-period-filter />
+
+  @if (error()) {
+    <div class="notice danger" role="alert"><mat-icon aria-hidden="true">error</mat-icon>Impossible de charger les indicateurs. Vérifiez votre connexion puis réessayez.</div>
+  }
+
+  <section class="grid-kpi" aria-label="Indicateurs clés">
+    @for (c of cards(); track c.label) {
+      <app-kpi-card [label]="c.label" [icon]="c.icon" [value]="c.value" [delta]="c.delta" [deltaKind]="c.kind"
+                    [goodWhen]="c.good" [accent]="c.accent" [hint]="c.hint" [loading]="loading()" />
+    }
+  </section>
+
+  <div class="charts-main">
+    <app-chart-card title="Tendance" subtitle="Absences et retards (jours-personnes) et taux de présence"
+                    [options]="trendOptions()" [loading]="loading()" [height]="300" />
+    <app-chart-card title="Absences par jour de semaine" subtitle="Absences ponctuelles, jour × semaine"
+                    [options]="heatOptions()" [loading]="loading()" [height]="300" />
+  </div>
+
+  <app-chart-card [title]="arrivalView() === 'time' ? 'Répartition des heures d\'arrivée' : 'Écart à l\'horaire de référence'"
+                  [subtitle]="arrivalView() === 'time' ? '1re entrée des jours de présence, par tranche de 15 min' : 'Minutes d\'écart à l\'horaire personnel ; au-delà de la tolérance (10 min) = retard'"
+                  [options]="arrivalOptions()" [loading]="loading()" [height]="260">
+    <mat-button-toggle-group actions [value]="arrivalView()" (change)="arrivalView.set($event.value)" aria-label="Vue des arrivées" hideSingleSelectionIndicator>
+      <mat-button-toggle value="time">Heure</mat-button-toggle>
+      <mat-button-toggle value="delta">Écart</mat-button-toggle>
+    </mat-button-toggle-group>
+  </app-chart-card>
+</div>

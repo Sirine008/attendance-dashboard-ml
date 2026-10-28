@@ -1,0 +1,14 @@
+// Styles communs aux onglets d'administration
+:host { display: flex; flex-direction: column; gap: 16px; }
+h3 { margin: 0; font-size: 1rem; font-weight: 600; }
+.form { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.form mat-form-field { width: 180px; }
+.form mat-form-field.wide { width: 280px; }
+@media (max-width: 600px) { .form mat-form-field, .form mat-form-field.wide { width: 100%; } }
+table.simple { width: 100%; border-collapse: collapse; font-size: .88rem; }
+table.simple th { text-align: left; font-weight: 600; color: var(--text-muted); padding: 8px 10px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+table.simple td { padding: 6px 10px; border-bottom: 1px solid var(--border); font-variant-numeric: tabular-nums; vertical-align: middle; }
+.tag { font-size: .72rem; padding: 1px 7px; border-radius: 999px; background: var(--warning-soft); color: var(--warning); white-space: nowrap; }
+.tag.ok { background: var(--success-soft); color: var(--success); }
+.tag.info { background: var(--info-soft); color: var(--info); }
+.inline-input { width: 96px; }

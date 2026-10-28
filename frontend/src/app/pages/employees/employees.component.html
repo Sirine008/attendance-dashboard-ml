@@ -1,0 +1,100 @@
+<div class="page">
+  <header class="page-header">
+    <div>
+      <h1>Collaborateurs</h1>
+      <p>{{ f.periodLabel() }} · indicateurs de la période et dernière estimation de risque</p>
+    </div>
+  </header>
+
+  <app-period-filter />
+
+  <div class="toolbar">
+    <mat-form-field class="search" subscriptSizing="dynamic">
+      <mat-label>Rechercher</mat-label>
+      <mat-icon matPrefix aria-hidden="true">search</mat-icon>
+      <input matInput [ngModel]="search()" (ngModelChange)="search.set($event)" placeholder="Nom, code, équipe" />
+    </mat-form-field>
+    <span class="muted small" aria-live="polite">{{ count() }} collaborateur(s)</span>
+    <span class="spacer"></span>
+    <button mat-stroked-button (click)="exportCsv()" [disabled]="!hasData()">
+      <mat-icon>download</mat-icon>Exporter en CSV
+    </button>
+  </div>
+
+  @if (error()) {
+    <div class="notice danger" role="alert"><mat-icon aria-hidden="true">error</mat-icon>Chargement impossible.</div>
+  }
+
+  <div class="table-wrap">
+    <table mat-table [dataSource]="data" matSort matSortActive="name" matSortDirection="asc" aria-label="Liste des collaborateurs">
+      <ng-container matColumnDef="name">
+        <th mat-header-cell *matHeaderCellDef mat-sort-header>Collaborateur · équipe</th>
+        <td mat-cell *matCellDef="let r">
+          <div class="name">
+            <strong>{{ r.displayName }}</strong>
+            <span class="code">{{ r.code }} · {{ r.teamName ?? 'sans équipe' }} @if (r.synthetic) { <span class="synthetic-badge">Synthétique</span> }</span>
+          </div>
+        </td>
+      </ng-container>
+      <ng-container matColumnDef="team">
+        <th mat-header-cell *matHeaderCellDef mat-sort-header>Équipe</th>
+        <td mat-cell *matCellDef="let r" class="muted small nowrap">{{ r.teamName ?? '—' }}</td>
+      </ng-container>
+      <ng-container matColumnDef="presence">
+        <th mat-header-cell *matHeaderCellDef mat-sort-header class="num">Présence</th>
+        <td mat-cell *matCellDef="let r" class="num">{{ fmt.pct(r.kpis.presenceRate) }}</td>
+      </ng-container>
+      <ng-container matColumnDef="absP">
+        <th mat-header-cell *matHeaderCellDef mat-sort-header class="num" matTooltip="Absences ponctuelles (jours)">Abs. ponct.</th>
+        <td mat-cell *matCellDef="let r" class="num">{{ r.kpis.absencesPonctuelles }}</td>
+      </ng-container>
+      <ng-container matColumnDef="absL">
+        <th mat-header-cell *matHeaderCellDef mat-sort-header class="num" matTooltip="Absences longues ≥ 3 jours (congé probable)">Abs. longues</th>
+        <td mat-cell *matCellDef="let r" class="num">{{ r.kpis.absencesLongues }}</td>
+      </ng-container>
+      <ng-container matColumnDef="late">
+        <th mat-header-cell *matHeaderCellDef mat-sort-header class="num">Retards</th>
+        <td mat-cell *matCellDef="let r" class="num">{{ r.kpis.lateDays }}</td>
+      </ng-container>
+      <ng-container matColumnDef="avgLate">
+        <th mat-header-cell *matHeaderCellDef mat-sort-header class="num">Retard moy.</th>
+        <td mat-cell *matCellDef="let r" class="num">{{ r.kpis.avgLateMinutes !== null ? fmt.num(r.kpis.avgLateMinutes) + ' min' : '—' }}</td>
+      </ng-container>
+      <ng-container matColumnDef="hours">
+        <th mat-header-cell *matHeaderCellDef mat-sort-header class="num">Heures moy.</th>
+        <td mat-cell *matCellDef="let r" class="num">{{ fmt.hours(r.kpis.avgWorkedHours) }}</td>
+      </ng-container>
+      <ng-container matColumnDef="incomplete">
+        <th mat-header-cell *matHeaderCellDef mat-sort-header class="num" matTooltip="Journées de pointage incomplet">Incomplets</th>
+        <td mat-cell *matCellDef="let r" class="num">{{ r.kpis.incompleteDays }}</td>
+      </ng-container>
+      <ng-container matColumnDef="spark">
+        <th mat-header-cell *matHeaderCellDef>Présence / sem.</th>
+        <td mat-cell *matCellDef="let r"><app-sparkline [values]="r.weeklyPresence" /></td>
+      </ng-container>
+      <ng-container matColumnDef="riskD1">
+        <th mat-header-cell *matHeaderCellDef mat-sort-header>Risque J+1</th>
+        <td mat-cell *matCellDef="let r"><app-risk-badge [level]="r.riskD1?.riskLevel ?? null" [status]="r.riskD1?.status ?? null" /></td>
+      </ng-container>
+      <ng-container matColumnDef="riskW1">
+        <th mat-header-cell *matHeaderCellDef mat-sort-header>Risque semaine</th>
+        <td mat-cell *matCellDef="let r"><app-risk-badge [level]="r.riskW1?.riskLevel ?? null" [status]="r.riskW1?.status ?? null" /></td>
+      </ng-container>
+
+      <tr mat-header-row *matHeaderRowDef="columns; sticky: true"></tr>
+      <tr mat-row *matRowDef="let r; columns: columns" class="clickable" (click)="open(r)" (keydown.enter)="open(r)" tabindex="0"
+          [attr.aria-label]="'Ouvrir la fiche de ' + r.displayName"></tr>
+      <tr class="mat-row" *matNoDataRow>
+        <td class="mat-cell" [attr.colspan]="columns.length">
+          @if (loading()) {
+            <div class="loading-row">@for (i of [1, 2, 3, 4, 5]; track i) { <div class="skeleton"></div> }</div>
+          } @else {
+            <div class="empty-state"><mat-icon aria-hidden="true">person_search</mat-icon>Aucun collaborateur ne correspond.</div>
+          }
+        </td>
+      </tr>
+    </table>
+  </div>
+  <mat-paginator [pageSizeOptions]="[10, 25, 50]" [pageSize]="25" showFirstLastButtons aria-label="Pagination" />
+  <p class="faint small">Les niveaux de risque sont des estimations statistiques d'aide à l'organisation du travail, pas une évaluation. Cliquez sur une ligne pour ouvrir la fiche (consultation tracée).</p>
+</div>

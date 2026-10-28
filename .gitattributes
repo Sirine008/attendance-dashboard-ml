@@ -1,0 +1,7 @@
+* text=auto
+*.sh text eol=lf
+mvnw text eol=lf
+*.xls binary
+*.xlsx binary
+*.png binary
+*.joblib binary

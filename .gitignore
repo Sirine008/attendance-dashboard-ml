@@ -1,0 +1,33 @@
+# IDE / OS
+.idea/
+.vscode/
+*.iml
+.DS_Store
+Thumbs.db
+
+# Backend
+backend/target/
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.angular/
+frontend/test-results/
+frontend/playwright-report/
+
+# Python
+ml-service/.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+ml-service/.cache/
+
+# Env
+.env
+*.log
+
+
+data/raw/
+*.xls
+*.xlsx
+.env

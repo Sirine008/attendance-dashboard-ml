@@ -1,0 +1,104 @@
+<div class="page">
+  <header class="page-header">
+    <div>
+      <h1>Santé du modèle</h1>
+      <p>Version active, performances mesurées sur les données réelles, calibration et suivi prédit vs réel.</p>
+    </div>
+    <div class="actions">
+      <button mat-stroked-button (click)="runPredictions()" [disabled]="busy()"><mat-icon>play_arrow</mat-icon>Générer les prédictions</button>
+      @if (!confirming()) {
+        <button mat-flat-button (click)="confirming.set(true)" [disabled]="busy()"><mat-icon>model_training</mat-icon>Réentraîner</button>
+      } @else {
+        <span class="confirm">
+          <span class="small">Réentraîner sur les données actuelles ?</span>
+          <button mat-flat-button (click)="retrain()">Confirmer</button>
+          <button mat-button (click)="confirming.set(false)">Annuler</button>
+        </span>
+      }
+    </div>
+  </header>
+  @if (busy()) { <mat-progress-bar mode="indeterminate" aria-label="Traitement en cours" /> }
+
+  @if (loading()) {
+    <div class="summary">@for (i of [1, 2, 3, 4]; track i) { <div class="card skeleton" style="height: 74px"></div> }</div>
+  } @else if (!info()?.active) {
+    <div class="notice warn"><mat-icon aria-hidden="true">warning</mat-icon>Aucun modèle enregistré pour le moment. {{ info()?.status?.message }}</div>
+  } @else {
+    @let a = info()!.active!;
+    <section class="summary" aria-label="Résumé">
+      <div class="card"><p class="k">Version active</p><p class="v">{{ a.version }}</p></div>
+      <div class="card"><p class="k">Entraîné le</p><p class="v">{{ fmt.dateTime(a.trainedAt) }}</p></div>
+      <div class="card"><p class="k">Données d'entraînement</p><p class="v">{{ summary()?.data?.employees }} collaborateurs réels · {{ fmt.frDate(summary()?.data?.start) }} → {{ fmt.frDate(summary()?.data?.end) }}</p></div>
+      <div class="card"><p class="k">Service de prédiction</p><p class="v">{{ info()!.status.mlReachable ? 'Disponible' : 'Indisponible' }}</p></div>
+    </section>
+
+    <mat-button-toggle-group class="hz" [value]="horizon()" (change)="setHorizon($event.value)" aria-label="Horizon" hideSingleSelectionIndicator>
+      <mat-button-toggle value="D1">J+1</mat-button-toggle>
+      <mat-button-toggle value="W1">Semaine</mat-button-toggle>
+    </mat-button-toggle-group>
+
+    @if (hz(); as h) {
+      <div class="card verdict" [class.notice]="!h.promoted_model">
+        <mat-icon aria-hidden="true">{{ h.promoted_model ? 'verified' : 'rule' }}</mat-icon>
+        <div>
+          <strong>Prédicteur utilisé : {{ NAMES[h.algorithm] }}.</strong>
+          @if (h.promoted_model) {
+            Ce modèle bat les deux baselines en validation (PR-AUC) : il a été promu.
+          } @else {
+            Aucun modèle appris ne bat la meilleure baseline en validation : conformément à la règle de non-promotion, c'est la baseline qui produit les estimations.
+          }
+          <div class="small muted">Seuils : modéré ≥ {{ f3(h.thresholds.MODERE) }}, élevé ≥ {{ f3(h.thresholds.ELEVE) }} · {{ h.n_train }} échantillons d'entraînement, {{ h.n_test }} de test.</div>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        @for (set of ['validation', 'test']; track set) {
+          <section class="card">
+            <h2>{{ set === 'validation' ? 'Validation walk-forward (juil.–déc. 2024)' : 'Test 2025 (entraînement sur 2024)' }}</h2>
+            <div class="table-wrap">
+              <table class="simple">
+                <thead><tr><th>Modèle</th><th class="num">PR-AUC</th><th class="num">ROC-AUC</th><th class="num">Brier</th><th class="num">Préc.&#64;3</th></tr></thead>
+                <tbody>
+                  @for (r of rows($any(set)); track r.kind) {
+                    <tr [class.chosen]="r.kind === h.algorithm">
+                      <td>{{ NAMES[r.kind] }}@if (r.kind === h.algorithm) { <span class="faint"> — utilisé</span> }</td>
+                      <td class="num">{{ f3(r.m.pr_auc) }}</td><td class="num">{{ f3(r.m.roc_auc) }}</td>
+                      <td class="num">{{ f3(r.m.brier) }}</td><td class="num">{{ f3(r.m.precision_at_3) }}</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+            @if (set === 'test' && h.test[h.algorithm]; as t) {
+              <p class="small muted">Taux de base en test : {{ pct1(t.base_rate) }} ({{ t.positives }} cas / {{ t.n }}).
+                Au seuil « élevé » : rappel {{ f3(t.recall_eleve) }}, précision {{ f3(t.precision_eleve) }}.</p>
+            }
+          </section>
+        }
+      </div>
+      <p class="small muted">PR-AUC : aire sous la courbe précision-rappel (adaptée aux classes rares) ; Brier : erreur quadratique des probabilités (plus bas = mieux) ; Préc.&#64;3 : part d'absences réelles parmi les 3 collaborateurs les plus à risque chaque jour.</p>
+    }
+
+    <div class="grid-2">
+      <app-chart-card title="Courbe de calibration (test 2025)" subtitle="Axe horizontal : probabilité prédite ; axe vertical : fréquence observée (par quintiles)"
+                      [options]="calibrationOptions()" [height]="300" />
+      <app-chart-card title="Backtest : 8 dernières semaines" [subtitle]="backtest()?.note ?? null"
+                      [options]="backtestOptions()" [loading]="backtestLoading()" [height]="300"
+                      emptyText="Backtest indisponible (service de prédiction injoignable)" />
+    </div>
+
+    <section class="card">
+      <h2>Historique des versions</h2>
+      <div class="table-wrap">
+        <table class="simple">
+          <thead><tr><th>Version</th><th>Entraînement</th><th>Prédicteur</th><th>Statut</th></tr></thead>
+          <tbody>
+            @for (r of info()!.history; track r.version) {
+              <tr [class.chosen]="r.active"><td>{{ r.version }}</td><td>{{ fmt.dateTime(r.trainedAt) }}</td><td>{{ r.algorithm }}</td><td>{{ r.active ? 'Active' : 'Archivée' }}</td></tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </section>
+  }
+</div>

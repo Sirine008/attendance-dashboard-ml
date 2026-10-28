@@ -1,0 +1,76 @@
+name: attijari-assiduite
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: assiduite
+      POSTGRES_USER: assiduite
+      POSTGRES_PASSWORD: assiduite
+    ports:
+      - "5440:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U assiduite -d assiduite"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  ml-service:
+    build: ./ml-service
+    environment:
+      DATABASE_URL: postgresql+psycopg://assiduite:assiduite@postgres:5432/assiduite
+      MODEL_DIR: /app/models
+      ML_ADMIN_TOKEN: ${ML_ADMIN_TOKEN:-change-me-ml-admin-token}
+      TZ: Africa/Tunis
+    volumes:
+      - mlmodels:/app/models
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+
+  backend:
+    build: ./backend
+    environment:
+      DB_URL: jdbc:postgresql://postgres:5432/assiduite
+      DB_USER: assiduite
+      DB_PASSWORD: assiduite
+      APP_IMPORT_DIR: /data/raw
+      # Démo à plus grande échelle : 60 collaborateurs SYNTHÉTIQUES (is_synthetic = true, masqués par défaut dans l'UI)
+      APP_IMPORT_SYNTHETICFILE: ${APP_IMPORT_SYNTHETICFILE:-/data/synthetic/Pointage_synthetique.xlsx}
+      APP_PREDICTION_CRON: ${APP_PREDICTION_CRON:-0 0 6 * * MON-FRI}
+      TZ: Africa/Tunis
+      APP_JWT_SECRET: ${APP_JWT_SECRET:-dev-only-secret-change-me-please-32-bytes-minimum!!}
+      APP_ML_URL: http://ml-service:8000
+      APP_ML_ADMIN_TOKEN: ${ML_ADMIN_TOKEN:-change-me-ml-admin-token}
+    volumes:
+      - ./data:/data:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c 'exec 3<>/dev/tcp/localhost/8080 && echo -e \"GET /actuator/health HTTP/1.0\r\n\r\n\" >&3 && grep -q UP <&3'"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+
+  frontend:
+    build: ./frontend
+    depends_on:
+      - backend
+    ports:
+      - "4200:80"
+
+volumes:
+  pgdata:
+  mlmodels:

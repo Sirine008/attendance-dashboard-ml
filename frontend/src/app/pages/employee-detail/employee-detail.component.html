@@ -1,0 +1,211 @@
+<div class="page">
+  <a routerLink="/employees" class="back"><mat-icon aria-hidden="true">arrow_back</mat-icon>Collaborateurs</a>
+
+  @if (notFound()) {
+    <div class="notice danger" role="alert"><mat-icon aria-hidden="true">block</mat-icon>{{ notFound() }}</div>
+  } @else if (!profile()) {
+    <div class="card"><div class="skeleton" style="height: 72px"></div></div>
+  } @else {
+    @let p = profile()!;
+    <header class="card profile">
+      <span class="avatar" aria-hidden="true">{{ initials() }}</span>
+      <div class="ident">
+        <h1>{{ p.displayName }} @if (p.synthetic) { <span class="synthetic-badge">Synthétique</span> }</h1>
+        <div class="meta">
+          <span><mat-icon aria-hidden="true">badge</mat-icon>{{ p.code }}</span>
+          <span><mat-icon aria-hidden="true">groups</mat-icon>{{ p.teamName ?? 'Sans équipe' }}</span>
+          <span [matTooltip]="p.hireDateFictive ? 'Date d\'embauche fictive (seed de démonstration)' : 'Date d\'embauche issue du fichier de pointage'">
+            <mat-icon aria-hidden="true">work_history</mat-icon>
+            Ancienneté {{ fmt.num(p.seniorityYears, 1) }} an(s)@if (p.hireDateFictive) { <em class="faint">(fictive)</em> }
+          </span>
+          @if (p.schedule; as s) {
+            <span matTooltip="Horaire de référence utilisé pour les retards">
+              <mat-icon aria-hidden="true">alarm</mat-icon>Référence {{ fmt.hm(s.startTime) }} (tolérance {{ s.toleranceMinutes }} min,
+              {{ s.source === 'AUTO' ? 'déduit des données' : 'saisi par RH' }})
+            </span>
+          }
+          <span><mat-icon aria-hidden="true">event_available</mat-icon>{{ p.trackedWorkingDays }} jours ouvrés suivis</span>
+        </div>
+      </div>
+    </header>
+
+    <app-period-filter [showTeam]="false" />
+
+    <section class="grid-kpi" aria-label="Indicateurs individuels">
+      @for (c of kpiCards(); track c.label) {
+        <app-kpi-card [label]="c.label" [icon]="c.icon" [value]="c.value" [delta]="c.delta" [deltaKind]="c.kind" [goodWhen]="c.good" />
+      }
+    </section>
+
+    <div class="layout">
+      <!-- Calendrier -->
+      <section class="card calendar" aria-labelledby="cal-title">
+        <header class="cal-head">
+          <h2 id="cal-title" class="card-title">Calendrier</h2>
+          <div class="row">
+            <button mat-icon-button (click)="shiftMonth(-1)" [disabled]="!canPrev()" aria-label="Mois précédent"><mat-icon>chevron_left</mat-icon></button>
+            <span class="month">{{ monthLabel() }}</span>
+            <button mat-icon-button (click)="shiftMonth(1)" [disabled]="!canNext()" aria-label="Mois suivant"><mat-icon>chevron_right</mat-icon></button>
+          </div>
+        </header>
+        <div class="weekdays" aria-hidden="true">
+          @for (w of ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim']; track w) { <span>{{ w }}</span> }
+        </div>
+        @if (calendarLoading()) {
+          <div class="skeleton" style="height: 300px"></div>
+        } @else {
+          <div class="days" role="grid" aria-label="Jours du mois">
+            @for (d of grid(); track $index) {
+              @if (d === null) {
+                <span class="day empty" aria-hidden="true"></span>
+              } @else {
+                @let m = meta(d);
+                <button class="day" type="button" role="gridcell"
+                        [class.selected]="selectedDay() === d.date" [class.off]="!d.status"
+                        [style.--st]="m.color" (click)="selectDay(d.date)" [attr.aria-label]="dayAria(d)"
+                        [attr.aria-selected]="selectedDay() === d.date" [matTooltip]="dayAria(d)">
+                  <span class="num">{{ d.date.slice(8) }}</span>
+                  @if (d.status || d.kind === 'FERIE') {
+                    <mat-icon class="st" aria-hidden="true">{{ m.icon }}</mat-icon>
+                    <span class="st-label">{{ m.short }}</span>
+                  }
+                  @if (d.incomplete) {
+                    <mat-icon class="warn" aria-hidden="true">warning</mat-icon>
+                  }
+                </button>
+              }
+            }
+          </div>
+        }
+        <ul class="legend" aria-label="Légende">
+          @for (k of legend; track k) {
+            <li><mat-icon aria-hidden="true" [style.color]="ATTENDANCE[k].color">{{ ATTENDANCE[k].icon }}</mat-icon>{{ ATTENDANCE[k].label }}</li>
+          }
+        </ul>
+      </section>
+
+      <!-- Timeline du jour sélectionné -->
+      <section class="card timeline-card" aria-labelledby="tl-title">
+        <h2 id="tl-title" class="card-title">Pointages du {{ selectedDay() ? fmt.longDate(selectedDay()) : '—' }}</h2>
+        @if (!selectedDay()) {
+          <div class="empty-state"><mat-icon aria-hidden="true">touch_app</mat-icon>Sélectionnez un jour dans le calendrier.</div>
+        } @else if (!dayDetail()) {
+          <div class="skeleton" style="height: 140px"></div>
+        } @else {
+          @let dd = dayDetail()!;
+          @if (dd.summary; as s) {
+            @let sm = meta(s);
+            <div class="day-summary">
+              <span class="chip" [style.--st]="sm.color"><mat-icon aria-hidden="true">{{ sm.icon }}</mat-icon>{{ sm.label }}</span>
+              @if (s.firstIn) { <span>Arrivée <strong class="tabular">{{ fmt.hm(s.firstIn) }}</strong></span> }
+              @if (s.lastOut) { <span>Départ <strong class="tabular">{{ fmt.hm(s.lastOut) }}</strong></span> }
+              @if (s.lateMinutes) { <span>Retard <strong class="tabular">{{ s.lateMinutes }} min</strong></span> }
+              @if (s.workedMinutes !== null) { <span>Présence <strong class="tabular">{{ fmt.minutesToHm(s.workedMinutes) }}</strong>@if (s.incomplete) { <em> (partielle)</em> }</span> }
+            </div>
+            @if (s.incomplete) {
+              <div class="notice warn"><mat-icon aria-hidden="true">warning</mat-icon>Pointage incomplet : nombre impair de passages ou séquence entrée/sortie incohérente. Les heures manquantes ne sont pas estimées.</div>
+            }
+          }
+          @if (dd.punches.length === 0) {
+            <div class="empty-state"><mat-icon aria-hidden="true">do_not_disturb_on</mat-icon>Aucun pointage ce jour-là.</div>
+          } @else if (timeline(); as tl) {
+            <div class="track" aria-hidden="true">
+              @for (t of tl.ticks; track t.label) { <span class="tick" [style.left.%]="t.left">{{ t.label }}</span> }
+              @for (s of tl.segments; track s.label) { <span class="seg" [style.left.%]="s.left" [style.width.%]="s.width" [title]="s.label"></span> }
+              @for (mk of tl.markers; track $index) {
+                <span class="mark" [class.out]="mk.direction === 'OUT'" [class.internal]="!mk.boundary" [class.dup]="mk.duplicate" [style.left.%]="mk.left"></span>
+              }
+            </div>
+            <ol class="punches">
+              @for (pc of dd.punches; track $index) {
+                <li [class.dup]="pc.duplicate">
+                  <span class="time tabular">{{ pc.time }}</span>
+                  <mat-icon aria-hidden="true" [class.in]="pc.direction === 'IN'">{{ pc.direction === 'IN' ? 'login' : 'logout' }}</mat-icon>
+                  <span>{{ pc.direction === 'IN' ? 'Entrée' : 'Sortie' }} — porte <strong>{{ pc.terminal }}</strong></span>
+                  @if (!pc.boundary) { <span class="tag">zone interne</span> }
+                  @if (pc.duplicate) { <span class="tag dup-tag">doublon ignoré</span> }
+                </li>
+              }
+            </ol>
+          }
+        }
+      </section>
+    </div>
+
+    <app-chart-card title="Heure d'arrivée vs horaire de référence" subtitle="Jours de présence de la période ; points orange = retard"
+                    [options]="arrivalOptions()" [loading]="arrivalsLoading()" [height]="260" />
+
+    <!-- Risque -->
+    <section class="risk-section" aria-labelledby="risk-title">
+      <h2 id="risk-title" class="section-title">Estimation du risque d'absence</h2>
+      <div class="grid-2">
+        @for (pv of [predictions()?.latestD1, predictions()?.latestW1]; track $index) {
+          <article class="card risk-card">
+            <h3>{{ $index === 0 ? 'Prochain jour ouvré (J+1)' : 'Semaine à venir' }}</h3>
+            @if (!pv) {
+              <div class="empty-state"><mat-icon aria-hidden="true">cloud_off</mat-icon>Aucune estimation disponible.</div>
+            } @else if (pv.status === 'INSUFFICIENT_HISTORY') {
+              <app-risk-badge status="INSUFFICIENT_HISTORY" />
+              <p class="muted small">Moins de 30 jours ouvrés d'historique : aucune estimation n'est affichée.</p>
+            } @else {
+              @let rm = RISK[pv.riskLevel!];
+              <div class="band" [style.--band]="rm.color" [style.--band-bg]="rm.bg">
+                <app-risk-badge [level]="pv.riskLevel" />
+                <span class="prob tabular">{{ fmt.approxPct(pv.probability) }}</span>
+                <span class="muted small">{{ periodText(pv) }}</span>
+              </div>
+              @if (pv.expectedDays !== null) {
+                <p class="small">Nombre de jours d'absence attendu : <strong class="tabular">{{ fmt.num(pv.expectedDays, 1) }}</strong></p>
+              }
+              <p class="factors-title small muted">Facteurs associés à l'estimation</p>
+              <ul class="factors">
+                @for (fa of pv.factors; track fa.feature) {
+                  <li><mat-icon aria-hidden="true" [class.up]="fa.direction === 'UP'">{{ fa.direction === 'UP' ? 'arrow_upward' : 'arrow_downward' }}</mat-icon>
+                    {{ fa.label }} <span class="faint">({{ fa.direction === 'UP' ? '↑ risque' : '↓ risque' }})</span></li>
+                }
+              </ul>
+              <p class="disclaimer small"><mat-icon aria-hidden="true">info</mat-icon>Estimation statistique, non une certitude. Données au {{ fmt.frDate(pv.referenceDate) }} · modèle {{ pv.modelVersion }}.</p>
+            }
+          </article>
+        }
+      </div>
+
+      <article class="card">
+        <header class="row hist-head">
+          <h3>Historique : estimé vs réel</h3>
+          <span class="spacer"></span>
+          <mat-button-toggle-group [value]="historyHorizon()" (change)="historyHorizon.set($event.value)" aria-label="Horizon" hideSingleSelectionIndicator>
+            <mat-button-toggle value="D1">J+1</mat-button-toggle>
+            <mat-button-toggle value="W1">Semaine</mat-button-toggle>
+          </mat-button-toggle-group>
+        </header>
+        @if (hitSummary(); as hs) {
+          <p class="small muted">Sur {{ hs.n }} estimations vérifiables : {{ hs.absent }} avec absence réelle ; {{ hs.high }} classées « élevé », dont {{ hs.highAbsent }} suivies d'une absence.</p>
+        }
+        @if (!history().length) {
+          <div class="empty-state"><mat-icon aria-hidden="true">history</mat-icon>Pas encore d'historique.</div>
+        } @else {
+          <div class="table-wrap">
+            <table class="simple">
+              <thead><tr><th>Cible</th><th>Estimation</th><th>Probabilité</th><th>Réel</th></tr></thead>
+              <tbody>
+                @for (h of history(); track h.prediction.targetDate) {
+                  <tr>
+                    <td>{{ h.prediction.horizon === 'D1' ? fmt.frDate(h.prediction.targetDate) : fmt.frDate(h.prediction.targetDate) + ' → ' + fmt.frDate(h.prediction.targetEnd) }}</td>
+                    <td><app-risk-badge [level]="h.prediction.riskLevel" [status]="h.prediction.status" /></td>
+                    <td class="tabular">{{ fmt.approxPct(h.prediction.probability) }}</td>
+                    <td>
+                      @if (h.actualAbsence === true) { <span class="outcome abs"><mat-icon aria-hidden="true">cancel</mat-icon>{{ h.actualDetail }}</span> }
+                      @else if (h.actualAbsence === false) { <span class="outcome ok"><mat-icon aria-hidden="true">check_circle</mat-icon>{{ h.actualDetail }}</span> }
+                      @else { <span class="faint">{{ h.actualDetail }}</span> }
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+      </article>
+    </section>
+  }
+</div>

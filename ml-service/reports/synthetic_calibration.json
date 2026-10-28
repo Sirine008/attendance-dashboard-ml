@@ -1,0 +1,49 @@
+{
+  "short_rate_by_dow": [
+    0.09,
+    0.0336,
+    0.0271,
+    0.0329,
+    0.0817
+  ],
+  "veille_multiplier": 2.57,
+  "lendemain_multiplier": 3.43,
+  "second_day_prob": 0.307,
+  "long_runs_per_year": 1.83,
+  "long_run_lengths": [
+    3,
+    3,
+    3,
+    3,
+    3,
+    3,
+    3,
+    4,
+    4,
+    5,
+    5,
+    6,
+    7,
+    9,
+    9,
+    9,
+    36,
+    51
+  ],
+  "reference_starts_min": [
+    465.0,
+    480.0,
+    480.0,
+    480.0,
+    495.0,
+    510.0,
+    540.0,
+    585.0
+  ],
+  "late_tolerance": 10,
+  "worked_hours_mean": 7.0,
+  "worked_hours_sd": 1.03,
+  "incomplete_rate": 0.0255,
+  "duplicate_rate": 0.007,
+  "internal_move_prob": 0.25
+}

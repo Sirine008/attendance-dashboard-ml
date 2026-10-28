@@ -1,0 +1,96 @@
+{
+  "D1": {
+    "chosen": "lgbm",
+    "test": {
+      "logistic": {
+        "n": 5340,
+        "positives": 344,
+        "base_rate": 0.0644,
+        "pr_auc": 0.2208,
+        "roc_auc": 0.7843,
+        "brier": 0.0565,
+        "precision_at_3": 0.2258
+      },
+      "lgbm": {
+        "n": 5340,
+        "positives": 344,
+        "base_rate": 0.0644,
+        "pr_auc": 0.2127,
+        "roc_auc": 0.7717,
+        "brier": 0.0553,
+        "precision_at_3": 0.2258,
+        "recall_modere": 0.7674,
+        "precision_modere": 0.1294,
+        "flagged_share_modere": 0.382,
+        "recall_eleve": 0.5581,
+        "precision_eleve": 0.1864,
+        "flagged_share_eleve": 0.1929
+      },
+      "baseline_hist": {
+        "n": 5340,
+        "positives": 344,
+        "base_rate": 0.0644,
+        "pr_auc": 0.1071,
+        "roc_auc": 0.6484,
+        "brier": 0.0592,
+        "precision_at_3": 0.1505
+      },
+      "baseline_dow": {
+        "n": 5340,
+        "positives": 344,
+        "base_rate": 0.0644,
+        "pr_auc": 0.1302,
+        "roc_auc": 0.6641,
+        "brier": 0.0588,
+        "precision_at_3": 0.1362
+      }
+    }
+  },
+  "W1": {
+    "chosen": "baseline_dow",
+    "test": {
+      "logistic": {
+        "n": 5118,
+        "positives": 1225,
+        "base_rate": 0.2394,
+        "pr_auc": 0.4413,
+        "roc_auc": 0.7014,
+        "brier": 0.1694,
+        "precision_at_3": 0.4569
+      },
+      "lgbm": {
+        "n": 5118,
+        "positives": 1225,
+        "base_rate": 0.2394,
+        "pr_auc": 0.4314,
+        "roc_auc": 0.7062,
+        "brier": 0.1743,
+        "precision_at_3": 0.4682
+      },
+      "baseline_hist": {
+        "n": 5118,
+        "positives": 1225,
+        "base_rate": 0.2394,
+        "pr_auc": 0.3894,
+        "roc_auc": 0.679,
+        "brier": 0.1685,
+        "precision_at_3": 0.4869
+      },
+      "baseline_dow": {
+        "n": 5118,
+        "positives": 1225,
+        "base_rate": 0.2394,
+        "pr_auc": 0.3948,
+        "roc_auc": 0.6815,
+        "brier": 0.168,
+        "precision_at_3": 0.4682,
+        "recall_modere": 0.498,
+        "precision_modere": 0.3878,
+        "flagged_share_modere": 0.3073,
+        "recall_eleve": 0.1976,
+        "precision_eleve": 0.4672,
+        "flagged_share_eleve": 0.1012
+      }
+    }
+  }
+}

@@ -1,0 +1,59 @@
+<a class="skip-link" href="#main">Aller au contenu</a>
+<mat-toolbar class="topbar">
+  <button mat-icon-button (click)="toggleNav()" [attr.aria-label]="isMobile() ? 'Ouvrir le menu' : (collapsed() ? 'Déplier la navigation' : 'Replier la navigation')">
+    <mat-icon>menu</mat-icon>
+  </button>
+  <a routerLink="/overview" class="brand" aria-label="Accueil — Attijari bank">
+    <img src="assets/brand/logo.svg" alt="Attijari bank" class="brand-logo" />
+    <span class="product">Assiduité</span>
+  </a>
+  <span class="spacer"></span>
+  <button mat-icon-button (click)="theme.toggle()" [matTooltip]="theme.mode() === 'dark' ? 'Mode clair' : 'Mode sombre'"
+          [attr.aria-label]="theme.mode() === 'dark' ? 'Passer en mode clair' : 'Passer en mode sombre'">
+    <mat-icon>{{ theme.mode() === 'dark' ? 'light_mode' : 'dark_mode' }}</mat-icon>
+  </button>
+  <button mat-button [matMenuTriggerFor]="userMenu" class="user-btn" aria-label="Menu utilisateur">
+    <span class="avatar" aria-hidden="true">{{ userInitials() }}</span>
+    <span class="user-name">{{ user()?.fullName }}</span>
+    <mat-icon iconPositionEnd>expand_more</mat-icon>
+  </button>
+  <mat-menu #userMenu="matMenu" xPosition="before">
+    <div class="menu-head">
+      <strong>{{ user()?.fullName }}</strong>
+      <span class="muted small">{{ roleLabel() }}@if (user()?.teamName) { · {{ user()?.teamName }} }</span>
+    </div>
+    <mat-divider />
+    <button mat-menu-item (click)="logout()"><mat-icon>logout</mat-icon>Se déconnecter</button>
+  </mat-menu>
+</mat-toolbar>
+
+<mat-sidenav-container class="container" autosize>
+  <mat-sidenav [mode]="isMobile() ? 'over' : 'side'" [opened]="isMobile() ? mobileOpen() : true" (closedStart)="mobileOpen.set(false)"
+               class="sidenav" [class.collapsed]="collapsed() && !isMobile()" role="navigation" aria-label="Navigation principale">
+    <mat-nav-list>
+      @for (item of nav(); track item.path) {
+        <a mat-list-item [routerLink]="item.path" routerLinkActive="active" #rla="routerLinkActive"
+           [attr.aria-current]="rla.isActive ? 'page' : null"
+           [matTooltip]="collapsed() && !isMobile() ? item.label : ''" matTooltipPosition="right">
+          <mat-icon matListItemIcon>{{ item.icon }}</mat-icon>
+          <span matListItemTitle class="nav-label">{{ item.label }}</span>
+        </a>
+      }
+    </mat-nav-list>
+    <div class="nav-footer">
+      <span class="faint small nav-label">Outil d'aide à l'organisation — jamais d'évaluation individuelle.</span>
+    </div>
+  </mat-sidenav>
+
+  <mat-sidenav-content id="main" tabindex="-1">
+    @if (status(); as s) {
+      @if (!s.available) {
+        <div class="banner" role="status">
+          <mat-icon aria-hidden="true">cloud_off</mat-icon>
+          <span><strong>Prédictions indisponibles.</strong> {{ s.message }}</span>
+        </div>
+      }
+    }
+    <router-outlet />
+  </mat-sidenav-content>
+</mat-sidenav-container>
